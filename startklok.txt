@@ -1,0 +1,55 @@
+Tijdverwerking startklok
+
+Init
+Neem de tijd om de communicatie op te starten
+Start met lezen interne klok en initieer daarop de Arduino tijden
+	zet aantGemisteGPSHardwarePulsen = 100
+	zet aantGemisteGPSSecondePulsen = 100	
+	zet aantGemisteKlokSecondePulsen = 100	
+Zit in het display een signalering voor alle drie pulsen
+	Zodra een puls is opgetreden, signalering uit
+
+Als er een puls binnenkomt
+	reset alle pulsen (methode van Klok)
+		wanneer een puls niet was geset, dit per puls doen
+		    - na 100 missers weten we het wel. De int mag niet omlopen
+			als aantGemisteGPSHardwarePulsen < 100 zet aantGemisteGPSHardwarePulsen += 1
+			als aantGemisteGPSSecondePulsen < 100 zet aantGemisteGPSSecondePulsen += 1	
+			als aantGemisteGPSHardwarePulsen > 5 en aantGemisteGPSHardwarePulsen  > 5
+				als aantGemisteKlokSecondePulsen < 100 zet aantGemisteKlokSecondePulsen += 1	
+	update de Arduino timers met iets extra vertraging (200 ms) zodat de eventuele pulsen altijd eerder komen
+	check dat de nieuwe seconde inhoudelijk met rust wordt gelaten, goede tijd staat er immers door na het kloklezen al in
+	maar displaytjes moeten wel meteen worden bijgewerkt!
+Als de Arduino seconde iets vertraagde timer verstrijkt
+	update de Arduino timers zonder verdere vertragingen, dan maar beetje vertrouwen op interne Arduino klok
+	- deze neemt het bijwerken van de tijd meteen over als er geen enkele puls na de extra tijd is binnengekomen
+	- de klok loopt nu iets achter, dus een nieuwe puls zal altijd op tijd komen, mits de Arduino niet te ver is verlopen
+
+Continue	
+	lees de GPS tijd
+	als er een hardwarepulse komt
+		zet interne gpsHardwarePulse op opgaande flank
+		lees de GPS tijd nog een keer (met beetje extra vertraging? Zie hieronder)
+		aantGemisteGPSHardwarePulsen = 0
+		De eerste keer dat dit gebeurt
+			Lees de interne klokchip
+			Als er verschil is, dan de klokchip bijwerken, anders gewoon met rust laten.
+	als er een nieuwe GPS seconde is
+		- informatief eens checken of op dit moment ook de hardware puls komt, dus dat je beide tegelijk krijgt. Zou wel aardig zijn
+		- als dit niet zo is, dan misschien na een hw puls enkele ms wachten alvorens nieuwe tijd te lezen in vorige stap
+		- let op, de nieuwe seconde kan meerdere keren komen, op 0 en 1 ms. Daarna (meestal) niet meer, dus na eerste blokkeren
+		zet interne gpsSecondePulse
+		aantGemisteGPSSecondePulsen = 0
+	als er een gpsPuls is opgetreden, dan de Arduino tijd bijwerken uit de GPS, dus niet eerder!!
+	als aantGemisteGPSHardwarePulsen > 5 en aantGemisteGPSHardwarePulsen  > 5
+		- er is 5 seconden niks van de GPS binnengekomen
+		lees de interne klok elke 200 ms of zo (niet te vaak, beetje communicatie besparen)
+		als er een nieuwe GPS seconde is
+			zet interne klokSecondePulse
+			zet aantGemisteKlokSecondePulsen = 0	
+	als er een klokSecondePulse is opgetreden, dan de Arduino tijd bijwerken uit de klok, dus niet eerder!!
+	als aantGemisteGPSHardwarePulsen > 5 en aantGemisteGPSHardwarePulsen  > 5 en aantGemisteKlokSecondePulsen > 5
+		tijdstoring en dan helemaal op de Arduino zelf lopen
+		Alleen in deze situatie de klok zelf ophogen
+		deze staat signaleren op klok
+		
